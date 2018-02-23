@@ -24,21 +24,34 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 /* This auxiliary subroutine performs a smaller dgemm operation
  *  C := C + A * B
  * where C is M-by-N, A is M-by-K, and B is K-by-N. */
-static void do_block (int lda, int M, int N, int K, double* A, double* B, double* C)
-{
-  /* For each row i of A */
-  for (int i = 0; i < M; ++i)
-    /* For each column j of B */ 
-    for (int j = 0; j < N; ++j) 
-    {
-      /* Compute C(i,j) */
-      double cij = C[i+j*lda];
-      for (int k = 0; k < K; ++k)
-	cij += A[i+k*lda] * B[k+j*lda];
-      C[i+j*lda] = cij;
-    }
-}
 
+    static void do_block (int lda, int M, int N, int K, double* A, double* B, double* C)
+    {
+        static double a[BLOCK_SIZE*BLOCK_SIZE] __attribute__ ((aligned (16)));
+        
+        for (int j=0 ; j< K; j++)
+        {
+            for (int i=0 ; i< M; i++)
+            {
+                a[i+j*BLOCK_SIZE] = A[i+j*lda] ;
+            }
+        }
+        
+        
+        /* For each row i of A */
+        for (int i = 0; i < M; ++i)
+        /* For each column j of B */
+            for (int j = 0; j < N; ++j)
+            {
+                /* Compute C(i,j) */
+                double cij = C[i+j*lda];
+                for (int k = 0; k < K; ++k)
+                    cij += a[i+(k*BLOCK_SIZE)] * B[k+j*lda];
+                C[i+j*lda] = cij;
+            }
+    }
+
+ 
 /* This routine performs a dgemm operation
  *  C := C + A * B
  * where A, B, and C are lda-by-lda matrices stored in column-major format. 
